@@ -65,6 +65,17 @@ class MainActivity : AppCompatActivity() {
             override fun onItemSelected(p0: AdapterView<*>?, p1: View?, p2: Int, p3: Long) {
                 encryptByteArray = "".toByteArray()
                 encryptContent.text = ""
+                decryptContent.text = ""
+            }
+
+            override fun onNothingSelected(p0: AdapterView<*>?) {
+            }
+        }
+        spinnerType.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(p0: AdapterView<*>?, p1: View?, p2: Int, p3: Long) {
+                encryptByteArray = "".toByteArray()
+                encryptContent.text = ""
+                decryptContent.text = ""
             }
 
             override fun onNothingSelected(p0: AdapterView<*>?) {
@@ -75,32 +86,19 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, "Hãy chọn file", Toast.LENGTH_LONG).show()
             } else {
                 var time = measureTimeMillis {
-                    if (spinnerBit.selectedItemPosition == 0) {
-                        aes = AES(
-                            generateRandomString(16)!!.toByteArray(),
-                            "1234567812345678".toByteArray(),
-                        )
-                    } else if (spinnerBit.selectedItemPosition == 1) {
-                        aes = AES(
-                            generateRandomString(24)!!.toByteArray(),
-                            "1234567812345678".toByteArray(),
-                        )
-                    } else {
-                        aes = AES(
-                            generateRandomString(32)!!.toByteArray(),
-                            "1234567812345678".toByteArray(),
-                        )
-                    }
                     if (spinnerType.selectedItem == "ECB") {
+                        remakeAES()
                         encryptByteArray = aes.ECB_encrypt(content.toByteArray())
                     } else {
+                        remakeAES()
                         encryptByteArray = aes.CBC_encrypt(content.toByteArray())
                     }
 
                     decrypt.isEnabled = true
                     decryptContent.text = ""
                 }
-                encryptContent.text = String(encryptByteArray) + "\n\n" + "Thời gian mã hóa :" + time + "ms"
+                // encryptContent.text = String(encryptByteArray) + "\n\n" + "Thời gian mã hóa :" + time + "ms"
+                encryptContent.text = "Thời gian mã hóa :" + time + "ms"
             }
         }
         decrypt.setOnClickListener {
@@ -217,5 +215,24 @@ class MainActivity : AppCompatActivity() {
             sb.append(randomChar)
         }
         return sb.toString()
+    }
+
+    fun remakeAES() {
+        if (spinnerBit.selectedItemPosition == 0) {
+            aes = AES(
+                generateRandomString(16)!!.toByteArray(),
+                "1234567812345678".toByteArray(),
+            )
+        } else if (spinnerBit.selectedItemPosition == 1) {
+            aes = AES(
+                generateRandomString(24)!!.toByteArray(),
+                "1234567812345678".toByteArray(),
+            )
+        } else {
+            aes = AES(
+                generateRandomString(32)!!.toByteArray(),
+                "1234567812345678".toByteArray(),
+            )
+        }
     }
 }
