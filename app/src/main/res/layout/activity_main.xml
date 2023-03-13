@@ -73,14 +73,36 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/encrypt_content" />
 
+        <EditText
+
+            android:id="@+id/editText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:hint="Nhập khóa"
+            app:layout_constraintEnd_toStartOf="@+id/random"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/sp_bit" />
+
+        <TextView
+            android:id="@+id/random"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Khóa ngẫu nhiên"
+            android:textColor="@color/white"
+            android:background="@drawable/bg_loading"
+            android:padding="6dp"
+            android:layout_margin="4dp"
+            app:layout_constraintBottom_toBottomOf="@+id/editText"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="@id/editText" />
+
         <TextView
             android:id="@+id/encrypt_content"
             android:layout_width="0dp"
-            android:layout_marginTop="16dp"
             android:layout_height="wrap_content"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/sp_bit" />
+            app:layout_constraintTop_toBottomOf="@+id/editText" />
 
         <TextView
             android:id="@+id/decrypt"

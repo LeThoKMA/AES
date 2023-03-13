@@ -5,6 +5,7 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.OpenableColumns
 import android.util.Log
@@ -13,10 +14,12 @@ import android.view.View
 import android.view.Window
 import android.view.WindowManager
 import android.widget.AdapterView
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -24,6 +27,7 @@ import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import java.io.BufferedReader
 import java.io.InputStreamReader
+import java.util.Base64
 import java.util.Random
 import kotlin.system.measureTimeMillis
 
@@ -36,23 +40,29 @@ class MainActivity : AppCompatActivity() {
     lateinit var decryptContent: TextView
     lateinit var loadingDialog: AlertDialog
     lateinit var encryptByteArray: ByteArray
+    lateinit var randomKey: EditText
+    lateinit var randomButton: TextView
     lateinit var spinnerBit: Spinner
     lateinit var spinnerType: Spinner
     lateinit var aes: AES
     var content = ""
-    var afterEncrypt = ""
+    var sz = 0
+    var key = byteArrayOf()
 
+    @RequiresApi(Build.VERSION_CODES.O)
     @SuppressLint("MissingInflatedId", "ShowToast")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         loadingDialog = setupProgressDialog()!!
         permission()
-        aes = AES(generateRandomString(16)!!.toByteArray(), "1234567812345678".toByteArray())
+        aes = AES(generateRandomKey(16).toByteArray(), generateRandomKey(16).toByteArray())
         pickFile = findViewById(R.id.pick_file)
         nameFile = findViewById(R.id.file_name)
         encrypt = findViewById(R.id.encrypt)
         decrypt = findViewById(R.id.decrypt)
+        randomKey = findViewById(R.id.editText)
+        randomButton = findViewById(R.id.random)
         decrypt.isEnabled = false
         encryptContent = findViewById(R.id.encrypt_content)
         decryptContent = findViewById(R.id.decrypt_content)
@@ -61,11 +71,21 @@ class MainActivity : AppCompatActivity() {
         spinnerType = findViewById(R.id.sp_type)
         spinnerType.adapter = SpinnerAdapter(arrayListOf("ECB", "CBC"), this)
 
+        randomButton.setOnClickListener {
+            if (spinnerBit.selectedItemPosition == 0) {
+                randomKey.setText(generateRandomKey(16))
+            } else if (spinnerBit.selectedItemPosition == 1) {
+                randomKey.setText(generateRandomKey(24))
+            } else {
+                randomKey.setText(generateRandomKey(32))
+            }
+        }
         spinnerBit.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(p0: AdapterView<*>?, p1: View?, p2: Int, p3: Long) {
                 encryptByteArray = "".toByteArray()
                 encryptContent.text = ""
                 decryptContent.text = ""
+                randomKey.setText("")
             }
 
             override fun onNothingSelected(p0: AdapterView<*>?) {
@@ -76,6 +96,7 @@ class MainActivity : AppCompatActivity() {
                 encryptByteArray = "".toByteArray()
                 encryptContent.text = ""
                 decryptContent.text = ""
+                randomKey.setText("")
             }
 
             override fun onNothingSelected(p0: AdapterView<*>?) {
@@ -85,20 +106,28 @@ class MainActivity : AppCompatActivity() {
             if (content.isBlank()) {
                 Toast.makeText(this, "Hãy chọn file", Toast.LENGTH_LONG).show()
             } else {
+                var check = false
                 var time = measureTimeMillis {
                     if (spinnerType.selectedItem == "ECB") {
-                        remakeAES()
-                        encryptByteArray = aes.ECB_encrypt(content.toByteArray())
+                        if (remakeAES(randomKey.text.toString())) {
+                            encryptByteArray = aes.ECB_encrypt(content.toByteArray())
+                            check = true
+                        }
                     } else {
-                        remakeAES()
-                        encryptByteArray = aes.CBC_encrypt(content.toByteArray())
+                        if (remakeAES(randomKey.text.toString())) {
+                            encryptByteArray = aes.CBC_encrypt(content.toByteArray())
+                            check = true
+                        }
                     }
 
                     decrypt.isEnabled = true
                     decryptContent.text = ""
                 }
-                // encryptContent.text = String(encryptByteArray) + "\n\n" + "Thời gian mã hóa :" + time + "ms"
-                encryptContent.text = "Thời gian mã hóa :" + time + "ms"
+                if (check) {
+                    encryptContent.text =
+                        Base64.getEncoder()
+                            .encodeToString(encryptByteArray) + "\n\n" + "Thời gian mã hóa :" + time + "ms"
+                }
             }
         }
         decrypt.setOnClickListener {
@@ -170,7 +199,7 @@ class MainActivity : AppCompatActivity() {
 
     fun readFileFromUri(uri: Uri): String {
         val inputStream = contentResolver.openInputStream(uri)
-        val reader = BufferedReader(InputStreamReader(inputStream))
+        val reader = BufferedReader(InputStreamReader(inputStream, "UTF-8"))
         val stringBuilder = StringBuilder()
 
         var line: String?
@@ -205,7 +234,7 @@ class MainActivity : AppCompatActivity() {
         return dialog
     }
 
-    fun generateRandomString(size: Int): String? {
+    fun generateRandomKey(size: Int): String {
         val random = Random()
         val sb = java.lang.StringBuilder()
         for (i in 0..size.minus(1)) {
@@ -217,22 +246,48 @@ class MainActivity : AppCompatActivity() {
         return sb.toString()
     }
 
-    fun remakeAES() {
+    fun remakeAES(text: String): Boolean {
         if (spinnerBit.selectedItemPosition == 0) {
+            if (text.length != 16) {
+                Toast.makeText(this, "Độ dài khóa không hợp lệ", Toast.LENGTH_LONG).show()
+                return false
+            }
+            val key = text.toByteArray()
             aes = AES(
-                generateRandomString(16)!!.toByteArray(),
-                "1234567812345678".toByteArray(),
+                key,
+                generateRandomKey(16).toByteArray(),
             )
+            Log.e("TAG", generateRandomKey(16).toString())
         } else if (spinnerBit.selectedItemPosition == 1) {
+            if (text.length != 24) {
+                Toast.makeText(this, "Độ dài khóa không hợp lệ", Toast.LENGTH_LONG).show()
+                return false
+            }
+            val key = text.toByteArray()
             aes = AES(
-                generateRandomString(24)!!.toByteArray(),
-                "1234567812345678".toByteArray(),
+                key,
+                generateRandomKey(16).toByteArray(),
             )
         } else {
+            if (text.length != 32) {
+                Toast.makeText(this, "Độ dài khóa không hợp lệ", Toast.LENGTH_LONG).show()
+                return false
+            }
+            val key = text.toByteArray()
             aes = AES(
-                generateRandomString(32)!!.toByteArray(),
-                "1234567812345678".toByteArray(),
+                key,
+                generateRandomKey(16).toByteArray(),
             )
+        }
+        return true
+    }
+
+    fun addSpaces(input: String, size: Int): String {
+        val maxLength = size
+        return if (input.length < maxLength) {
+            input.padEnd(maxLength, ' ')
+        } else {
+            input
         }
     }
 }
